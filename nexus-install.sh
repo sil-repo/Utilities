@@ -16,7 +16,8 @@ fi
 
 echo "Updating Nexus Core"
 echo "-------------------"
-cd ~/nexus/nexus-app || { echo "Directory ~/nexus/nexus-app not found"; exit 1; }
+mkdir -p ~/nexus/nexus-app
+cd ~/nexus/nexus-app || { echo "Failed to enter ~/nexus/nexus-app"; exit 1; }
 if [ -n "$GIT_TOKEN" ]; then
     git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
 else
@@ -29,7 +30,8 @@ echo ""
 
 echo "Updating Nexus Custom"
 echo "---------------------"
-cd ~/nexus/nexus-custom || { echo "Directory ~/nexus/nexus-custom not found"; exit 1; }
+mkdir -p ~/nexus/nexus-custom
+cd ~/nexus/nexus-custom || { echo "Failed to enter ~/nexus/nexus-custom"; exit 1; }
 if [ -n "$GIT_TOKEN" ]; then
     git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
 else
@@ -42,7 +44,8 @@ echo ""
 
 echo "Updating Nexus Implementation"
 echo "---------------------"
-cd ~/nexus/nexus-implementation || { echo "Directory ~/nexus/nexus-implementation not found"; exit 1; }
+mkdir -p ~/nexus/nexus-implementation
+cd ~/nexus/nexus-implementation || { echo "Failed to enter ~/nexus/nexus-implementation"; exit 1; }
 if [ -n "$GIT_TOKEN" ]; then
     git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
 else
