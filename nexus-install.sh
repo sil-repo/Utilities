@@ -135,23 +135,16 @@ fi
 echo ""
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}🔧 Repository setup complete! Starting Docker operations...${NC}"
+echo -e "${WHITE}🔧Update complete. Attempting to restart the Nexus container...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
-echo -e "${PURPLE}🐳 Attempting to restart the Nexus container...${NC}"
-echo -e "${PURPLE}────────────────────────────────────────────────${NC}"
 docker restart nexus
 echo ""
-
-echo -e "${CYAN}📊 Container Status:${NC}"
 docker ps | grep "nexus"
 echo ""
-
-echo -e "${YELLOW}📋 Recent Container Logs:${NC}"
 docker logs nexus --tail 20
 echo ""
+echo "** Check uptime of container. If it has not reset, restart the container again**"
+echo ""
 
-echo -e "${RED}⚠️  ${WHITE}IMPORTANT: Check container uptime above. If it hasn't reset, restart the container again manually!${NC}"
-echo -e "\n${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS SETUP COMPLETED${PURPLE}                         ║${NC}"
-echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
+
