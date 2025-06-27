@@ -18,17 +18,98 @@ echo -e "${PURPLE}╚═══════════════════�
 echo ""
 
 # Load the Git token
-# If token cannot be found create a a PAT token (This is best approach)
-#    - Create the file: `echo "PATCodeInHere" > /git_token`
+# If token cannot be found, we'll use GitHub Device Flow for authentication
+#    - This will provide a browser link for secure authentication
+#    - Alternative: Create a PAT token file: `echo "PATCodeInHere" > /git_token`
 #    - Secure the file: `chmod 600 /git_token`.
-#    - Test PAT token -- curl -u git:$(cat /tmp/git_token) https://api.github.com/repos/sil-repo/Nexus
 if [ -f /git_token ]; then
     export GIT_TOKEN=$(cat /git_token)
     echo -e "${GREEN}✓ Using GitHub token from /git_token${NC}"
 else
-    echo -e "${YELLOW}⚠ No /git_token file found. Please provide GitHub credentials.${NC}"
-    echo -e "${CYAN}GitHub Username: ${NC}\c"
-    read GIT_USERNAME
+    echo -e "${YELLOW}⚠ No /git_token file found. Starting GitHub Device Flow authentication...${NC}"
+    echo -e "${CYAN}🔗 Please authenticate with GitHub using the browser link that will be provided.${NC}"
+    echo ""
+    
+    # Start GitHub Device Flow
+    echo -e "${BLUE}📱 Requesting device authentication from GitHub...${NC}"
+    DEVICE_RESPONSE=$(curl -s -X POST \
+        -H "Accept: application/json" \
+        -H "User-Agent: Nexus-Installer" \
+        -d "client_id=Ov23liOODBR1WJ8aJ0vL&scope=repo" \
+        https://github.com/login/device/code)
+    
+    if [ $? -eq 0 ] && [ -n "$DEVICE_RESPONSE" ]; then
+        DEVICE_CODE=$(echo "$DEVICE_RESPONSE" | grep -o '"device_code":"[^"]*"' | cut -d'"' -f4)
+        USER_CODE=$(echo "$DEVICE_RESPONSE" | grep -o '"user_code":"[^"]*"' | cut -d'"' -f4)
+        VERIFICATION_URI=$(echo "$DEVICE_RESPONSE" | grep -o '"verification_uri":"[^"]*"' | cut -d'"' -f4)
+        INTERVAL=$(echo "$DEVICE_RESPONSE" | grep -o '"interval":[0-9]*' | cut -d':' -f2)
+        
+        if [ -n "$USER_CODE" ] && [ -n "$VERIFICATION_URI" ]; then
+            echo -e "${GREEN}✅ Device authentication initiated successfully!${NC}"
+            echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${YELLOW}🌐 Please open this URL in your browser:${NC}"
+            echo -e "${CYAN}   ${VERIFICATION_URI}${NC}"
+            echo ""
+            echo -e "${YELLOW}🔑 Enter this code when prompted:${NC}"
+            echo -e "${WHITE}   ${USER_CODE}${NC}"
+            echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            echo -e "${BLUE}⏳ Waiting for authentication... (This may take a moment)${NC}"
+            
+            # Poll for authentication
+            MAX_ATTEMPTS=60
+            ATTEMPT=0
+            INTERVAL=${INTERVAL:-5}
+            
+            while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+                sleep $INTERVAL
+                TOKEN_RESPONSE=$(curl -s -X POST \
+                    -H "Accept: application/json" \
+                    -H "User-Agent: Nexus-Installer" \
+                    -d "client_id=Ov23liOODBR1WJ8aJ0vL&device_code=$DEVICE_CODE&grant_type=urn:ietf:params:oauth:grant-type:device_code" \
+                    https://github.com/login/oauth/access_token)
+                
+                if echo "$TOKEN_RESPONSE" | grep -q "access_token"; then
+                    GIT_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+                    export GIT_TOKEN
+                    echo -e "${GREEN}✅ Authentication successful! Token acquired.${NC}"
+                    echo -e "${BLUE}💾 Saving token to /git_token for future use...${NC}"
+                    echo "$GIT_TOKEN" > /git_token
+                    chmod 600 /git_token
+                    echo -e "${GREEN}✓ Token saved successfully${NC}"
+                    break
+                elif echo "$TOKEN_RESPONSE" | grep -q "authorization_pending"; then
+                    echo -e "${YELLOW}⏳ Still waiting for authorization... (attempt $((ATTEMPT + 1))/${MAX_ATTEMPTS})${NC}"
+                elif echo "$TOKEN_RESPONSE" | grep -q "slow_down"; then
+                    INTERVAL=$((INTERVAL + 5))
+                    echo -e "${YELLOW}🐌 Slowing down polling interval...${NC}"
+                elif echo "$TOKEN_RESPONSE" | grep -q "expired_token"; then
+                    echo -e "${RED}❌ Device code expired. Please restart the script.${NC}"
+                    exit 1
+                elif echo "$TOKEN_RESPONSE" | grep -q "access_denied"; then
+                    echo -e "${RED}❌ Authentication denied. Please restart the script.${NC}"
+                    exit 1
+                else
+                    echo -e "${YELLOW}⚠ Unexpected response, continuing to wait...${NC}"
+                fi
+                
+                ATTEMPT=$((ATTEMPT + 1))
+            done
+            
+            if [ -z "$GIT_TOKEN" ]; then
+                echo -e "${RED}❌ Authentication timeout. Please restart the script and try again.${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${RED}❌ Failed to parse GitHub response. Falling back to username/password.${NC}"
+            echo -e -n "${CYAN}GitHub Username: ${NC}"
+            read GIT_USERNAME
+        fi
+    else
+        echo -e "${RED}❌ Failed to connect to GitHub. Falling back to username/password.${NC}"
+        echo -e -n "${CYAN}GitHub Username: ${NC}"
+        read GIT_USERNAME
+    fi
 fi
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════${NC}"
@@ -46,7 +127,7 @@ if [ -d ~/nexus/nexus-app ]; then
     if [ -n "$GIT_TOKEN" ]; then
         git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
     else
-        echo -e "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}\c"
+        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}"
         read -s GIT_PASSWORD
         echo ""
         git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin master
@@ -60,7 +141,7 @@ else
     if [ -n "$GIT_TOKEN" ]; then
         git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-app.git nexus-app
     else
-        echo -e "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}\c"
+        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}"
         read -s GIT_PASSWORD
         echo ""
         git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-app.git nexus-app
@@ -78,7 +159,7 @@ if [ -d ~/nexus/nexus-custom ]; then
     if [ -n "$GIT_TOKEN" ]; then
         git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
     else
-        echo -e "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}\c"
+        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}"
         read -s GIT_PASSWORD
         echo ""
         git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin master
@@ -92,7 +173,7 @@ else
     if [ -n "$GIT_TOKEN" ]; then
         git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-custom.git nexus-custom
     else
-        echo -e "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}\c"
+        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}"
         read -s GIT_PASSWORD
         echo ""
         git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-custom.git nexus-custom
@@ -110,7 +191,7 @@ if [ -d ~/nexus/nexus-implementation ]; then
     if [ -n "$GIT_TOKEN" ]; then
         git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
     else
-        echo -e "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}\c"
+        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}"
         read -s GIT_PASSWORD
         echo ""
         git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin master
@@ -124,7 +205,7 @@ else
     if [ -n "$GIT_TOKEN" ]; then
         git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
     else
-        echo -e "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}\c"
+        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}"
         read -s GIT_PASSWORD
         echo ""
         git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
@@ -146,5 +227,4 @@ docker logs nexus --tail 20
 echo ""
 echo "** Check uptime of container. If it has not reset, restart the container again**"
 echo ""
-
 
