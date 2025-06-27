@@ -188,12 +188,12 @@ else
     echo -e "${GREEN}────────────────────${NC}"
     cd ~/nexus
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-app.git nexus-app
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus.git nexus-app
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-app.git nexus-app
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus.git nexus-app
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Core created successfully${NC}"
@@ -220,12 +220,12 @@ else
     echo -e "${GREEN}──────────────────────${NC}"
     cd ~/nexus
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-custom.git nexus-custom
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-PAS.git nexus-custom
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-custom.git nexus-custom
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-PAS.git nexus-custom
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Custom created successfully${NC}"
