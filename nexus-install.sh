@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-# Colour for visual appeal
+# Colour definitions for visual appeal
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -27,62 +27,96 @@ if [ -f /git_token ]; then
     echo -e "${GREEN}✓ Using GitHub token from /git_token${NC}"
 else
     echo -e "${YELLOW}⚠ No /git_token file found. Starting GitHub Device Flow authentication...${NC}"
-    echo -e "${CYAN}🔗 Please authenticate with GitHub using the browser link that will be provided.${NC}"
+    echo -e "${CYAN}🔗 This will provide a browser link for secure authentication.${NC}"
     echo ""
     
     # Start GitHub Device Flow
     echo -e "${BLUE}📱 Requesting device authentication from GitHub...${NC}"
+    
+    # Use a public client ID for GitHub CLI (safe to use)
+    CLIENT_ID="178c6fc778ccc68e1d6a"
+    
     DEVICE_RESPONSE=$(curl -s -X POST \
         -H "Accept: application/json" \
         -H "User-Agent: Nexus-Installer" \
-        -d "client_id=Ov23liOODBR1WJ8aJ0vL&scope=repo" \
+        -d "client_id=$CLIENT_ID&scope=repo" \
         https://github.com/login/device/code)
     
+    # Debug: Show raw response (remove this line in production)
+    echo -e "${BLUE}Debug - Raw response: $DEVICE_RESPONSE${NC}"
+    
     if [ $? -eq 0 ] && [ -n "$DEVICE_RESPONSE" ]; then
-        DEVICE_CODE=$(echo "$DEVICE_RESPONSE" | grep -o '"device_code":"[^"]*"' | cut -d'"' -f4)
-        USER_CODE=$(echo "$DEVICE_RESPONSE" | grep -o '"user_code":"[^"]*"' | cut -d'"' -f4)
-        VERIFICATION_URI=$(echo "$DEVICE_RESPONSE" | grep -o '"verification_uri":"[^"]*"' | cut -d'"' -f4)
-        INTERVAL=$(echo "$DEVICE_RESPONSE" | grep -o '"interval":[0-9]*' | cut -d':' -f2)
+        # Use jq if available, otherwise use grep
+        if command -v jq >/dev/null 2>&1; then
+            DEVICE_CODE=$(echo "$DEVICE_RESPONSE" | jq -r '.device_code // empty')
+            USER_CODE=$(echo "$DEVICE_RESPONSE" | jq -r '.user_code // empty')
+            VERIFICATION_URI=$(echo "$DEVICE_RESPONSE" | jq -r '.verification_uri // empty')
+            INTERVAL=$(echo "$DEVICE_RESPONSE" | jq -r '.interval // 5')
+        else
+            # Fallback parsing without jq
+            DEVICE_CODE=$(echo "$DEVICE_RESPONSE" | sed -n 's/.*"device_code":"\([^"]*\)".*/\1/p')
+            USER_CODE=$(echo "$DEVICE_RESPONSE" | sed -n 's/.*"user_code":"\([^"]*\)".*/\1/p')
+            VERIFICATION_URI=$(echo "$DEVICE_RESPONSE" | sed -n 's/.*"verification_uri":"\([^"]*\)".*/\1/p')
+            INTERVAL=$(echo "$DEVICE_RESPONSE" | sed -n 's/.*"interval":\([0-9]*\).*/\1/p')
+        fi
         
-        if [ -n "$USER_CODE" ] && [ -n "$VERIFICATION_URI" ]; then
+        # Set default interval if parsing failed
+        INTERVAL=${INTERVAL:-5}
+        
+        if [ -n "$USER_CODE" ] && [ -n "$VERIFICATION_URI" ] && [ -n "$DEVICE_CODE" ]; then
             echo -e "${GREEN}✅ Device authentication initiated successfully!${NC}"
-            echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "${YELLOW}🌐 Please open this URL in your browser:${NC}"
-            echo -e "${CYAN}   ${VERIFICATION_URI}${NC}"
             echo ""
-            echo -e "${YELLOW}🔑 Enter this code when prompted:${NC}"
-            echo -e "${WHITE}   ${USER_CODE}${NC}"
-            echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${WHITE}╔══════════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${WHITE}║                    ${YELLOW}GITHUB AUTHENTICATION${WHITE}                    ║${NC}"
+            echo -e "${WHITE}╠══════════════════════════════════════════════════════════════╣${NC}"
+            echo -e "${WHITE}║                                                              ║${NC}"
+            echo -e "${WHITE}║  ${YELLOW}🌐 Please open this URL in your browser:${WHITE}                ║${NC}"
+            echo -e "${WHITE}║     ${CYAN}${VERIFICATION_URI}${WHITE}$(printf "%*s" $((48 - ${#VERIFICATION_URI})) "")║${NC}"
+            echo -e "${WHITE}║                                                              ║${NC}"
+            echo -e "${WHITE}║  ${YELLOW}🔑 Enter this code when prompted:${WHITE}                      ║${NC}"
+            echo -e "${WHITE}║     ${GREEN}${USER_CODE}${WHITE}$(printf "%*s" $((52 - ${#USER_CODE})) "")║${NC}"
+            echo -e "${WHITE}║                                                              ║${NC}"
+            echo -e "${WHITE}║  ${BLUE}💡 Copy the URL and code above to authenticate${WHITE}          ║${NC}"
+            echo -e "${WHITE}║     in your browser, then return here.${WHITE}                  ║${NC}"
+            echo -e "${WHITE}║                                                              ║${NC}"
+            echo -e "${WHITE}╚══════════════════════════════════════════════════════════════╝${NC}"
             echo ""
-            echo -e "${BLUE}⏳ Waiting for authentication... (This may take a moment)${NC}"
+            echo -e "${BLUE}⏳ Waiting for authentication... (Press Ctrl+C to cancel)${NC}"
+            echo ""
             
             # Poll for authentication
-            MAX_ATTEMPTS=60
+            MAX_ATTEMPTS=120  # 10 minutes at 5-second intervals
             ATTEMPT=0
-            INTERVAL=${INTERVAL:-5}
             
             while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
                 sleep $INTERVAL
                 TOKEN_RESPONSE=$(curl -s -X POST \
                     -H "Accept: application/json" \
                     -H "User-Agent: Nexus-Installer" \
-                    -d "client_id=Ov23liOODBR1WJ8aJ0vL&device_code=$DEVICE_CODE&grant_type=urn:ietf:params:oauth:grant-type:device_code" \
+                    -d "client_id=$CLIENT_ID&device_code=$DEVICE_CODE&grant_type=urn:ietf:params:oauth:grant-type:device_code" \
                     https://github.com/login/oauth/access_token)
                 
                 if echo "$TOKEN_RESPONSE" | grep -q "access_token"; then
-                    GIT_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-                    export GIT_TOKEN
-                    echo -e "${GREEN}✅ Authentication successful! Token acquired.${NC}"
-                    echo -e "${BLUE}💾 Saving token to /git_token for future use...${NC}"
-                    echo "$GIT_TOKEN" > /git_token
-                    chmod 600 /git_token
-                    echo -e "${GREEN}✓ Token saved successfully${NC}"
-                    break
+                    if command -v jq >/dev/null 2>&1; then
+                        GIT_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
+                    else
+                        GIT_TOKEN=$(echo "$TOKEN_RESPONSE" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+                    fi
+                    
+                    if [ -n "$GIT_TOKEN" ]; then
+                        export GIT_TOKEN
+                        echo -e "${GREEN}✅ Authentication successful! Token acquired.${NC}"
+                        echo -e "${BLUE}💾 Saving token to /git_token for future use...${NC}"
+                        echo "$GIT_TOKEN" > /git_token
+                        chmod 600 /git_token
+                        echo -e "${GREEN}✓ Token saved successfully${NC}"
+                        break
+                    fi
                 elif echo "$TOKEN_RESPONSE" | grep -q "authorization_pending"; then
-                    echo -e "${YELLOW}⏳ Still waiting for authorization... (attempt $((ATTEMPT + 1))/${MAX_ATTEMPTS})${NC}"
+                    echo -e "${YELLOW}⏳ Still waiting for authorisation... (${ATTEMPT}/${MAX_ATTEMPTS} - $(( (MAX_ATTEMPTS - ATTEMPT) * INTERVAL / 60 )) minutes remaining)${NC}"
                 elif echo "$TOKEN_RESPONSE" | grep -q "slow_down"; then
                     INTERVAL=$((INTERVAL + 5))
-                    echo -e "${YELLOW}🐌 Slowing down polling interval...${NC}"
+                    echo -e "${YELLOW}🐌 Slowing down polling interval to ${INTERVAL} seconds...${NC}"
                 elif echo "$TOKEN_RESPONSE" | grep -q "expired_token"; then
                     echo -e "${RED}❌ Device code expired. Please restart the script.${NC}"
                     exit 1
@@ -90,23 +124,38 @@ else
                     echo -e "${RED}❌ Authentication denied. Please restart the script.${NC}"
                     exit 1
                 else
-                    echo -e "${YELLOW}⚠ Unexpected response, continuing to wait...${NC}"
+                    echo -e "${YELLOW}⚠ Waiting for authentication... (response: $(echo "$TOKEN_RESPONSE" | head -c 50)...)${NC}"
                 fi
                 
                 ATTEMPT=$((ATTEMPT + 1))
             done
             
             if [ -z "$GIT_TOKEN" ]; then
-                echo -e "${RED}❌ Authentication timeout. Please restart the script and try again.${NC}"
-                exit 1
+                echo -e "${RED}❌ Authentication timeout after 10 minutes.${NC}"
+                echo -e "${YELLOW}💡 You can also create a Personal Access Token manually:${NC}"
+                echo -e "${CYAN}   1. Go to: https://github.com/settings/tokens${NC}"
+                echo -e "${CYAN}   2. Generate a new token with 'repo' scope${NC}"
+                echo -e "${CYAN}   3. Save it to: echo 'YOUR_TOKEN' > /git_token${NC}"
+                echo -e "${CYAN}   4. Secure it: chmod 600 /git_token${NC}"
+                echo ""
+                echo -e "${YELLOW}Falling back to username/password authentication...${NC}"
+                echo -e -n "${CYAN}GitHub Username: ${NC}"
+                read GIT_USERNAME
             fi
         else
-            echo -e "${RED}❌ Failed to parse GitHub response. Falling back to username/password.${NC}"
+            echo -e "${RED}❌ Failed to parse GitHub response.${NC}"
+            echo -e "${YELLOW}Debug info:${NC}"
+            echo -e "  Device code: '${DEVICE_CODE}'"
+            echo -e "  User code: '${USER_CODE}'"
+            echo -e "  Verification URI: '${VERIFICATION_URI}'"
+            echo ""
+            echo -e "${YELLOW}Falling back to username/password authentication...${NC}"
             echo -e -n "${CYAN}GitHub Username: ${NC}"
             read GIT_USERNAME
         fi
     else
-        echo -e "${RED}❌ Failed to connect to GitHub. Falling back to username/password.${NC}"
+        echo -e "${RED}❌ Failed to connect to GitHub.${NC}"
+        echo -e "${YELLOW}Falling back to username/password authentication...${NC}"
         echo -e -n "${CYAN}GitHub Username: ${NC}"
         read GIT_USERNAME
     fi
