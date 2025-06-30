@@ -176,30 +176,32 @@ echo -e "${BLUE}2) Test Branch (test)${NC} - Development/testing version"
 echo ""
 
 # Loop until valid input is provided
-while true; do
+BRANCH=""
+while [ -z "$BRANCH" ]; do
     echo -e -n "${CYAN}Enter your choice (1 or 2): ${NC}"
-    read BRANCH_CHOICE
+    read -r BRANCH_CHOICE
     
-    case $BRANCH_CHOICE in
+    case "$BRANCH_CHOICE" in
         1)
             BRANCH="master"
             echo -e "${GREEN}✓ Selected: Live Branch (master)${NC}"
-            break
             ;;
         2)
             BRANCH="test"
             echo -e "${BLUE}✓ Selected: Test Branch (test)${NC}"
-            break
             ;;
         "")
             echo -e "${RED}❌ No input provided. Please enter 1 or 2.${NC}"
-            echo ""
             ;;
         *)
             echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Please enter 1 or 2.${NC}"
-            echo ""
             ;;
     esac
+    
+    # Add a small delay to prevent rapid looping
+    if [ -z "$BRANCH" ]; then
+        sleep 0.5
+    fi
 done
 echo ""
 
