@@ -165,7 +165,7 @@ echo -e "\n${BLUE}════════════════════�
 echo -e "${WHITE}🚀 Starting Nexus repositories setup...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
-# Branch selection
+# Branch selection - forced input
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${PURPLE}║                    ${WHITE}BRANCH SELECTION${PURPLE}                         ║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
@@ -174,23 +174,33 @@ echo -e "${YELLOW}Please select which branch to install/update:${NC}"
 echo -e "${GREEN}1) Live Branch (master)${NC} - Stable production version"
 echo -e "${BLUE}2) Test Branch (test)${NC} - Development/testing version"
 echo ""
-echo -e -n "${CYAN}Enter your choice (1 or 2): ${NC}"
-read BRANCH_CHOICE
 
-case $BRANCH_CHOICE in
-    1)
-        BRANCH="master"
-        echo -e "${GREEN}✓ Selected: Live Branch (master)${NC}"
-        ;;
-    2)
-        BRANCH="test"
-        echo -e "${BLUE}✓ Selected: Test Branch (test)${NC}"
-        ;;
-    *)
-        echo -e "${YELLOW}⚠ Invalid choice. Defaulting to Live Branch (master)${NC}"
-        BRANCH="master"
-        ;;
-esac
+# Loop until valid input is provided
+while true; do
+    echo -e -n "${CYAN}Enter your choice (1 or 2): ${NC}"
+    read BRANCH_CHOICE
+    
+    case $BRANCH_CHOICE in
+        1)
+            BRANCH="master"
+            echo -e "${GREEN}✓ Selected: Live Branch (master)${NC}"
+            break
+            ;;
+        2)
+            BRANCH="test"
+            echo -e "${BLUE}✓ Selected: Test Branch (test)${NC}"
+            break
+            ;;
+        "")
+            echo -e "${RED}❌ No input provided. Please enter 1 or 2.${NC}"
+            echo ""
+            ;;
+        *)
+            echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Please enter 1 or 2.${NC}"
+            echo ""
+            ;;
+    esac
+done
 echo ""
 
 # Create nexus directory if it doesn't exist
