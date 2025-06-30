@@ -165,35 +165,63 @@ echo -e "\n${BLUE}════════════════════�
 echo -e "${WHITE}🚀 Starting Nexus repositories setup...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
+# Branch selection
+echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${PURPLE}║                    ${WHITE}BRANCH SELECTION${PURPLE}                         ║${NC}"
+echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "${YELLOW}Please select which branch to install/update:${NC}"
+echo -e "${GREEN}1) Live Branch (master)${NC} - Stable production version"
+echo -e "${BLUE}2) Test Branch (test)${NC} - Development/testing version"
+echo ""
+echo -e -n "${CYAN}Enter your choice (1 or 2): ${NC}"
+read BRANCH_CHOICE
+
+case $BRANCH_CHOICE in
+    1)
+        BRANCH="master"
+        echo -e "${GREEN}✓ Selected: Live Branch (master)${NC}"
+        ;;
+    2)
+        BRANCH="test"
+        echo -e "${BLUE}✓ Selected: Test Branch (test)${NC}"
+        ;;
+    *)
+        echo -e "${YELLOW}⚠ Invalid choice. Defaulting to Live Branch (master)${NC}"
+        BRANCH="master"
+        ;;
+esac
+echo ""
+
 # Create nexus directory if it doesn't exist
 mkdir -p ~/nexus
 
 # Handle Nexus Core (nexus-app)
 if [ -d ~/nexus/nexus-app ]; then
-    echo -e "${CYAN}🔄 Updating Nexus Core${NC}"
+    echo -e "${CYAN}🔄 Updating Nexus Core (${BRANCH} branch)${NC}"
     echo -e "${CYAN}────────────────────${NC}"
     cd ~/nexus/nexus-app
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin $BRANCH
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin master
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin $BRANCH
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Core updated successfully${NC}"
 else
-    echo -e "${GREEN}🆕 Creating Nexus Core${NC}"
+    echo -e "${GREEN}🆕 Creating Nexus Core (${BRANCH} branch)${NC}"
     echo -e "${GREEN}────────────────────${NC}"
     cd ~/nexus
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus.git nexus-app
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus.git nexus-app
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus.git nexus-app
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus.git nexus-app
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Core created successfully${NC}"
@@ -202,30 +230,30 @@ echo ""
 
 # Handle Nexus Custom
 if [ -d ~/nexus/nexus-custom ]; then
-    echo -e "${CYAN}🔄 Updating Nexus Custom${NC}"
+    echo -e "${CYAN}🔄 Updating Nexus Custom (${BRANCH} branch)${NC}"
     echo -e "${CYAN}──────────────────────${NC}"
     cd ~/nexus/nexus-custom
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin $BRANCH
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin master
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin $BRANCH
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Custom updated successfully${NC}"
 else
-    echo -e "${GREEN}🆕 Creating Nexus Custom${NC}"
+    echo -e "${GREEN}🆕 Creating Nexus Custom (${BRANCH} branch)${NC}"
     echo -e "${GREEN}──────────────────────${NC}"
     cd ~/nexus
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-PAS.git nexus-custom
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-PAS.git nexus-custom
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-PAS.git nexus-custom
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-PAS.git nexus-custom
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Custom created successfully${NC}"
@@ -234,30 +262,30 @@ echo ""
 
 # Handle Nexus Implementation
 if [ -d ~/nexus/nexus-implementation ]; then
-    echo -e "${CYAN}🔄 Updating Nexus Implementation${NC}"
+    echo -e "${CYAN}🔄 Updating Nexus Implementation (${BRANCH} branch)${NC}"
     echo -e "${CYAN}──────────────────────────────${NC}"
     cd ~/nexus/nexus-implementation
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin master
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin $BRANCH
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin master
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin $BRANCH
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Implementation updated successfully${NC}"
 else
-    echo -e "${GREEN}🆕 Creating Nexus Implementation${NC}"
+    echo -e "${GREEN}🆕 Creating Nexus Implementation (${BRANCH} branch)${NC}"
     echo -e "${GREEN}──────────────────────────────${NC}"
     cd ~/nexus
     if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
+        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
     else
         echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}"
         read -s GIT_PASSWORD
         echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
+        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
         unset GIT_PASSWORD
     fi
     echo -e "${GREEN}✓ Nexus Implementation created successfully${NC}"
