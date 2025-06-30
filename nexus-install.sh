@@ -178,8 +178,8 @@ echo ""
 # Loop until valid input is provided
 BRANCH=""
 while [ -z "$BRANCH" ]; do
-    echo -e -n "${CYAN}Enter your choice (1 or 2): ${NC}"
-    read -r BRANCH_CHOICE
+    printf "${CYAN}Enter your choice (1 or 2): ${NC}"
+    read -r BRANCH_CHOICE < /dev/tty
     
     case "$BRANCH_CHOICE" in
         1)
@@ -197,11 +197,6 @@ while [ -z "$BRANCH" ]; do
             echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Please enter 1 or 2.${NC}"
             ;;
     esac
-    
-    # Add a small delay to prevent rapid looping
-    if [ -z "$BRANCH" ]; then
-        sleep 0.5
-    fi
 done
 echo ""
 
