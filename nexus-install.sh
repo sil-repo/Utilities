@@ -300,75 +300,43 @@ fi
 echo ""
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}🔧 Update complete. Configuring Docker logging and restarting container...${NC}"
+echo -e "${WHITE}🔧 Update complete. Deploying with docker-compose-prod.yml...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
-# Check if container exists and configure logging
-if docker ps -a --format "table {{.Names}}" | grep -q "^nexus$"; then
-    echo -e "${CYAN}📋 Configuring Docker logging for Nexus container...${NC}"
-    
-    # Stop the container if running
-    if docker ps --format "table {{.Names}}" | grep -q "^nexus$"; then
-        echo -e "${YELLOW}⏹️  Stopping Nexus container...${NC}"
-        docker stop nexus
-    fi
-    
-    # Remove existing container to recreate with proper logging
-    echo -e "${YELLOW}🗑️  Removing existing container to apply logging configuration...${NC}"
-    docker rm nexus
-    
-    # Recreate container with enhanced logging configuration
-    echo -e "${GREEN}🔧 Creating Nexus container with automatic logging enabled...${NC}"
-    docker run -d \
-        --name nexus \
-        --restart unless-stopped \
-        --log-driver json-file \
-        --log-opt max-size=100m \
-        --log-opt max-file=5 \
-        --log-opt compress=true \
-        -p 8081:8081 \
-        -v nexus-data:/nexus-data \
-        sonatype/nexus3:latest
-    
-    echo -e "${GREEN}✅ Container recreated with logging configuration:${NC}"
-    echo -e "${CYAN}   • Log driver: json-file${NC}"
-    echo -e "${CYAN}   • Max log size: 100MB per file${NC}"
-    echo -e "${CYAN}   • Max log files: 5 (500MB total)${NC}"
-    echo -e "${CYAN}   • Log compression: enabled${NC}"
-    echo -e "${CYAN}   • Auto-restart: unless-stopped${NC}"
-else
-    echo -e "${GREEN}🆕 Creating new Nexus container with logging enabled...${NC}"
-    docker run -d \
-        --name nexus \
-        --restart unless-stopped \
-        --log-driver json-file \
-        --log-opt max-size=100m \
-        --log-opt max-file=5 \
-        --log-opt compress=true \
-        -p 8081:8081 \
-        -v nexus-data:/nexus-data \
-        sonatype/nexus3:latest
-    
-    echo -e "${GREEN}✅ Container created with logging configuration${NC}"
-fi
+# Add or update logging options in docker-compose override file
+docker_compose_override="/home/source/nexus/docker-compose-prod.override.yml"
+cat > "$docker_compose_override" <<EOL
+version: '3.8'
+services:
+  nexus:
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+        compress: "true"
+  smtp:
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+        compress: "true"
+EOL
+
+cd /home/source/nexus
+
+docker compose -f docker-compose-prod.yml -f docker-compose-prod.override.yml up -d --remove-orphans
 
 echo ""
 echo -e "${BLUE}📊 Container status:${NC}"
-docker ps | grep "nexus"
-echo ""
+docker compose -f docker-compose-prod.yml -f docker-compose-prod.override.yml ps
 
-echo -e "${BLUE}📜 Recent logs (last 20 lines):${NC}"
-docker logs nexus --tail 20
 echo ""
+echo -e "${BLUE}📜 Recent logs for nexus (last 20 lines):${NC}"
+docker compose -f docker-compose-prod.yml -f docker-compose-prod.override.yml logs --tail=20 nexus
 
-echo -e "${BLUE}💡 Logging Information:${NC}"
-echo -e "${CYAN}   • View live logs: ${WHITE}docker logs -f nexus${NC}"
-echo -e "${CYAN}   • View all logs: ${WHITE}docker logs nexus${NC}"
-echo -e "${CYAN}   • Logs location: ${WHITE}/var/lib/docker/containers/[container-id]/[container-id]-json.log${NC}"
-echo -e "${CYAN}   • Log rotation: Automatic (5 files × 100MB each)${NC}"
 echo ""
-
-echo -e "${YELLOW}** Check uptime of container. If it has not reset, restart the container again **${NC}"
-echo -e "${GREEN}** Logs are now automatically enabled and will be rotated to prevent disk space issues **${NC}"
+echo -e "${BLUE}💡 Logging is enabled with rotation (100MB × 5 files, compressed) for all services.${NC}"
+echo -e "${YELLOW}** Check uptime and logs as needed. **${NC}"
 echo ""
-
