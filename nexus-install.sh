@@ -303,8 +303,10 @@ echo -e "\n${BLUE}════════════════════�
 echo -e "${WHITE}🔧 Update complete. Deploying with docker-compose-prod.yml...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
-# Add or update logging options in docker-compose override file
-docker_compose_override="/home/source/nexus/docker-compose-prod.override.yml"
+# Add or update logging options and ensure working_dir/command for nexus in docker-compose override file
+# Use the correct compose file extension (.yaml)
+docker_compose_base="/home/source/nexus/docker-compose-prod.yaml"
+docker_compose_override="/home/source/nexus/docker-compose-prod.override.yaml"
 cat > "$docker_compose_override" <<EOL
 version: '3.8'
 services:
@@ -315,6 +317,8 @@ services:
         max-size: "100m"
         max-file: "5"
         compress: "true"
+    working_dir: /var/node
+    command: ["bash", "/var/node/start-live.sh"]
   smtp:
     logging:
       driver: json-file
@@ -326,15 +330,15 @@ EOL
 
 cd /home/source/nexus
 
-docker compose -f docker-compose-prod.yml -f docker-compose-prod.override.yml up -d --remove-orphans
+docker compose -f "$docker_compose_base" -f "$docker_compose_override" up -d --remove-orphans
 
 echo ""
 echo -e "${BLUE}📊 Container status:${NC}"
-docker compose -f docker-compose-prod.yml -f docker-compose-prod.override.yml ps
+docker compose -f "$docker_compose_base" -f "$docker_compose_override" ps
 
 echo ""
 echo -e "${BLUE}📜 Recent logs for nexus (last 20 lines):${NC}"
-docker compose -f docker-compose-prod.yml -f docker-compose-prod.override.yml logs --tail=20 nexus
+docker compose -f "$docker_compose_base" -f "$docker_compose_override" logs --tail=20 nexus
 
 echo ""
 echo -e "${BLUE}💡 Logging is enabled with rotation (100MB × 5 files, compressed) for all services.${NC}"
