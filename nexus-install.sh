@@ -300,15 +300,75 @@ fi
 echo ""
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}🔧Update complete. Attempting to restart the Nexus container...${NC}"
+echo -e "${WHITE}🔧 Update complete. Configuring Docker logging and restarting container...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
-docker restart nexus
+# Check if container exists and configure logging
+if docker ps -a --format "table {{.Names}}" | grep -q "^nexus$"; then
+    echo -e "${CYAN}📋 Configuring Docker logging for Nexus container...${NC}"
+    
+    # Stop the container if running
+    if docker ps --format "table {{.Names}}" | grep -q "^nexus$"; then
+        echo -e "${YELLOW}⏹️  Stopping Nexus container...${NC}"
+        docker stop nexus
+    fi
+    
+    # Remove existing container to recreate with proper logging
+    echo -e "${YELLOW}🗑️  Removing existing container to apply logging configuration...${NC}"
+    docker rm nexus
+    
+    # Recreate container with enhanced logging configuration
+    echo -e "${GREEN}🔧 Creating Nexus container with automatic logging enabled...${NC}"
+    docker run -d \
+        --name nexus \
+        --restart unless-stopped \
+        --log-driver json-file \
+        --log-opt max-size=100m \
+        --log-opt max-file=5 \
+        --log-opt compress=true \
+        -p 8081:8081 \
+        -v nexus-data:/nexus-data \
+        sonatype/nexus3:latest
+    
+    echo -e "${GREEN}✅ Container recreated with logging configuration:${NC}"
+    echo -e "${CYAN}   • Log driver: json-file${NC}"
+    echo -e "${CYAN}   • Max log size: 100MB per file${NC}"
+    echo -e "${CYAN}   • Max log files: 5 (500MB total)${NC}"
+    echo -e "${CYAN}   • Log compression: enabled${NC}"
+    echo -e "${CYAN}   • Auto-restart: unless-stopped${NC}"
+else
+    echo -e "${GREEN}🆕 Creating new Nexus container with logging enabled...${NC}"
+    docker run -d \
+        --name nexus \
+        --restart unless-stopped \
+        --log-driver json-file \
+        --log-opt max-size=100m \
+        --log-opt max-file=5 \
+        --log-opt compress=true \
+        -p 8081:8081 \
+        -v nexus-data:/nexus-data \
+        sonatype/nexus3:latest
+    
+    echo -e "${GREEN}✅ Container created with logging configuration${NC}"
+fi
+
 echo ""
+echo -e "${BLUE}📊 Container status:${NC}"
 docker ps | grep "nexus"
 echo ""
+
+echo -e "${BLUE}📜 Recent logs (last 20 lines):${NC}"
 docker logs nexus --tail 20
 echo ""
-echo "** Check uptime of container. If it has not reset, restart the container again**"
+
+echo -e "${BLUE}💡 Logging Information:${NC}"
+echo -e "${CYAN}   • View live logs: ${WHITE}docker logs -f nexus${NC}"
+echo -e "${CYAN}   • View all logs: ${WHITE}docker logs nexus${NC}"
+echo -e "${CYAN}   • Logs location: ${WHITE}/var/lib/docker/containers/[container-id]/[container-id]-json.log${NC}"
+echo -e "${CYAN}   • Log rotation: Automatic (5 files × 100MB each)${NC}"
+echo ""
+
+echo -e "${YELLOW}** Check uptime of container. If it has not reset, restart the container again **${NC}"
+echo -e "${GREEN}** Logs are now automatically enabled and will be rotated to prevent disk space issues **${NC}"
 echo ""
 
