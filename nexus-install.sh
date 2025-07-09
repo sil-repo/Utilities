@@ -14,7 +14,7 @@ NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.9 SCRIPT${PURPLE}║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.7.0 SCRIPT${PURPLE}║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -167,8 +167,9 @@ echo -e "${WHITE}🚀 Starting Nexus repositories setup...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
 # Check if we have a terminal available for interactive input
-if [ ! -t 0 ] && [ ! -r /dev/tty ]; then
-    echo -e "${RED}❌ Error: This script requires interactive input but no terminal is available (due to API calls to github).${NC}"
+# Only exit if we truly can't read from terminal AND no argument was provided
+if [ ! -t 0 ] && [ ! -r /dev/tty ] && [ -z "$1" ]; then
+    echo -e "${RED}❌ Error: This script requires interactive input but no terminal is available.${NC}"
     echo -e "${YELLOW}💡 Try running the script directly instead of piping:${NC}"
     echo -e "${CYAN}   1. Download the script: wget -O nexus-install.sh [URL]${NC}"
     echo -e "${CYAN}   2. Make it executable: chmod +x nexus-install.sh${NC}"
@@ -260,6 +261,8 @@ select_branch() {
     local repo_name=$1
     local branch=""
     
+    echo -e "${BLUE}DEBUG: Starting branch selection for ${repo_name}${NC}"
+    
     while [ -z "$branch" ]; do
         # Display header with repository name
         echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
@@ -272,7 +275,15 @@ select_branch() {
         echo -e "${RED}4) Skip this repository${NC}"
         echo ""
         printf "${CYAN}Enter your choice (1-4): ${NC}"
-        read -r choice < /dev/tty
+        
+        # Try to read from /dev/tty first, then fallback to stdin
+        if [ -r /dev/tty ]; then
+            read -r choice < /dev/tty
+        else
+            read -r choice
+        fi
+        
+        echo -e "${BLUE}DEBUG: User entered choice: '${choice}'${NC}"
         
         case "$choice" in
             1)
@@ -291,8 +302,11 @@ select_branch() {
                 branch="none"
                 echo -e "${RED}✓ Skipping this repository${NC}"
                 ;;
+            "")
+                echo -e "${RED}❌ No input provided. Please enter a number between 1 and 4.${NC}"
+                ;;
             *)
-                echo -e "${RED}❌ Invalid choice. Please enter a number between 1 and 4.${NC}"
+                echo -e "${RED}❌ Invalid choice '${choice}'. Please enter a number between 1 and 4.${NC}"
                 ;;
         esac
     done
