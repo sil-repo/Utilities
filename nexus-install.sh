@@ -14,7 +14,7 @@ NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.7.0 SCRIPT${PURPLE}║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.7.1 SCRIPT${PURPLE}║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -257,9 +257,10 @@ fi
 echo ""
 
 # Function to select branch for a repository
-select_branch() {
+select_branch_for_repo() {
     local repo_name=$1
     local branch=""
+    SELECTED_BRANCH=""
     
     echo -e "${BLUE}DEBUG: Starting branch selection for ${repo_name}${NC}"
     
@@ -311,7 +312,7 @@ select_branch() {
         esac
     done
     echo ""
-    echo "$branch"
+    SELECTED_BRANCH=$branch
 }
 
 # If Advanced (Custom) option is selected, choose branch for each repository
@@ -320,9 +321,19 @@ if [ "$BRANCH_CHOICE" = "3" ]; then
     echo ""
     echo -e "${BLUE}📝 Now selecting branches for each repository...${NC}"
     echo ""
-    NEXUS_CORE_BRANCH=$(select_branch "Nexus Core")
-    NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom")
-    NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation")
+    
+    # Select branch for Nexus Core
+    select_branch_for_repo "Nexus Core"
+    NEXUS_CORE_BRANCH=$SELECTED_BRANCH
+    
+    # Select branch for Nexus Custom
+    select_branch_for_repo "Nexus Custom"
+    NEXUS_CUSTOM_BRANCH=$SELECTED_BRANCH
+    
+    # Select branch for Nexus Implementation
+    select_branch_for_repo "Nexus Implementation"
+    NEXUS_IMPLEMENTATION_BRANCH=$SELECTED_BRANCH
+    
     DOCKER_COMPOSE_FILE="docker-compose-custom.yaml"
 else
     NEXUS_CORE_BRANCH=$BRANCH
