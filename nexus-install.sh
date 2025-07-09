@@ -173,174 +173,148 @@ echo ""
 echo -e "${YELLOW}Please select which branch to install/update:${NC}"
 echo -e "${GREEN}1) Live Branch (master)${NC} - Stable production version"
 echo -e "${BLUE}2) Test Branch (test)${NC} - Development/testing version"
+echo -e "${PURPLE}3) Advanced (Custom)${NC} - Select branch for each repository"
 echo ""
 
 # Loop until valid input is provided
-BRANCH=""
-while [ -z "$BRANCH" ]; do
-    printf "${CYAN}Enter your choice (1 or 2): ${NC}"
+BRANCH_CHOICE=""
+while [ -z "$BRANCH_CHOICE" ]; do
+    printf "${CYAN}Enter your choice (1, 2, or 3): ${NC}"
     read -r BRANCH_CHOICE < /dev/tty
     
     case "$BRANCH_CHOICE" in
         1)
             BRANCH="master"
+            DOCKER_COMPOSE_FILE="docker-compose-prod.yaml"
             echo -e "${GREEN}✓ Selected: Live Branch (master)${NC}"
             ;;
         2)
             BRANCH="test"
+            DOCKER_COMPOSE_FILE="docker-compose-test.yaml"
             echo -e "${BLUE}✓ Selected: Test Branch (test)${NC}"
             ;;
+        3)
+            echo -e "${ORANGE}✓ Selected: Advanced (Custom)${NC}"
+            ;;
         "")
-            echo -e "${RED}❌ No input provided. Please enter 1 or 2.${NC}"
+            echo -e "${RED}❌ No input provided. Please enter 1, 2, or 3.${NC}"
+            BRANCH_CHOICE=""
             ;;
         *)
-            echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Please enter 1 or 2.${NC}"
+            echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Please enter 1, 2, or 3.${NC}"
+            BRANCH_CHOICE=""
             ;;
     esac
 done
 echo ""
 
+# Function to select branch for a repository
+select_branch() {
+    local repo_name=$1
+    local branch=""
+    while [ -z "$branch" ]; do
+        echo -e "${YELLOW}Select branch for ${repo_name}:${NC}"
+        echo -e "1) master"
+        echo -e "2) test"
+        echo -e "3) None (pull from GitHub if possible)"
+        printf "${CYAN}Enter your choice (1, 2, or 3): ${NC}"
+        read -r choice < /dev/tty
+        case "$choice" in
+            1) branch="master" ;;
+            2) branch="test" ;;
+            3) branch="none" ;;
+            *) echo -e "${RED}❌ Invalid choice. Please enter 1, 2, or 3.${NC}" ;;
+        esac
+    done
+    echo "$branch"
+}
+
+# If Advanced (Custom) option is selected, choose branch for each repository
+if [ "$BRANCH_CHOICE" = "3" ]; then
+    NEXUS_CORE_BRANCH=$(select_branch "Nexus Core")
+    NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom")
+    NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation")
+    DOCKER_COMPOSE_FILE="docker-compose-hmmm.yaml"
+else
+    NEXUS_CORE_BRANCH=$BRANCH
+    NEXUS_CUSTOM_BRANCH=$BRANCH
+    NEXUS_IMPLEMENTATION_BRANCH=$BRANCH
+fi
+
 # Create nexus directory if it doesn't exist
 mkdir -p ~/nexus
 
 # Handle Nexus Core (nexus-app)
-if [ -d ~/nexus/nexus-app ]; then
-    echo -e "${CYAN}🔄 Updating Nexus Core (${BRANCH} branch)${NC}"
-    echo -e "${CYAN}────────────────────${NC}"
-    cd ~/nexus/nexus-app
-    if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin $BRANCH
-    else
-        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}"
-        read -s GIT_PASSWORD
-        echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin $BRANCH
-        unset GIT_PASSWORD
-    fi
-    echo -e "${GREEN}✓ Nexus Core updated successfully${NC}"
-else
-    echo -e "${GREEN}🆕 Creating Nexus Core (${BRANCH} branch)${NC}"
-    echo -e "${GREEN}────────────────────${NC}"
-    cd ~/nexus
-    if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus.git nexus-app
-    else
-        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Core: ${NC}"
-        read -s GIT_PASSWORD
-        echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus.git nexus-app
-        unset GIT_PASSWORD
-    fi
-    echo -e "${GREEN}✓ Nexus Core created successfully${NC}"
-fi
-echo ""
+handle_repository() {
+    local repo_name=$1
+    local repo_path=$2
+    local repo_url=$3
+    local branch=$4
 
-# Handle Nexus Custom
-if [ -d ~/nexus/nexus-custom ]; then
-    echo -e "${CYAN}🔄 Updating Nexus Custom (${BRANCH} branch)${NC}"
-    echo -e "${CYAN}──────────────────────${NC}"
-    cd ~/nexus/nexus-custom
-    if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin $BRANCH
-    else
-        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}"
-        read -s GIT_PASSWORD
-        echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin $BRANCH
-        unset GIT_PASSWORD
+    if [ "$branch" = "none" ]; then
+        echo -e "${YELLOW}Skipping ${repo_name} as 'None' was selected${NC}"
+        return
     fi
-    echo -e "${GREEN}✓ Nexus Custom updated successfully${NC}"
-else
-    echo -e "${GREEN}🆕 Creating Nexus Custom (${BRANCH} branch)${NC}"
-    echo -e "${GREEN}──────────────────────${NC}"
-    cd ~/nexus
-    if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-PAS.git nexus-custom
-    else
-        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Custom: ${NC}"
-        read -s GIT_PASSWORD
-        echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-PAS.git nexus-custom
-        unset GIT_PASSWORD
-    fi
-    echo -e "${GREEN}✓ Nexus Custom created successfully${NC}"
-fi
-echo ""
 
-# Handle Nexus Implementation
-if [ -d ~/nexus/nexus-implementation ]; then
-    echo -e "${CYAN}🔄 Updating Nexus Implementation (${BRANCH} branch)${NC}"
-    echo -e "${CYAN}──────────────────────────────${NC}"
-    cd ~/nexus/nexus-implementation
-    if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin $BRANCH
+    if [ -d "$repo_path" ]; then
+        echo -e "${CYAN}🔄 Updating ${repo_name} (${branch} branch)${NC}"
+        echo -e "${CYAN}$(printf '%0.s─' {1..${#repo_name}})${NC}"
+        cd "$repo_path"
+        if [ -n "$GIT_TOKEN" ]; then
+            git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' pull origin "$branch"
+        else
+            echo -e -n "${YELLOW}🔐 GitHub Password for ${repo_name}: ${NC}"
+            read -s GIT_PASSWORD
+            echo ""
+            git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin "$branch"
+            unset GIT_PASSWORD
+        fi
+        echo -e "${GREEN}✓ ${repo_name} updated successfully${NC}"
     else
-        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}"
-        read -s GIT_PASSWORD
-        echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' pull origin $BRANCH
-        unset GIT_PASSWORD
+        echo -e "${GREEN}🆕 Creating ${repo_name} (${branch} branch)${NC}"
+        echo -e "${GREEN}$(printf '%0.s─' {1..${#repo_name}})${NC}"
+        cd ~/nexus
+        if [ -n "$GIT_TOKEN" ]; then
+            git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone -b "$branch" "$repo_url" "$(basename "$repo_path")"
+        else
+            echo -e -n "${YELLOW}🔐 GitHub Password for ${repo_name}: ${NC}"
+            read -s GIT_PASSWORD
+            echo ""
+            git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone -b "$branch" "$repo_url" "$(basename "$repo_path")"
+            unset GIT_PASSWORD
+        fi
+        echo -e "${GREEN}✓ ${repo_name} created successfully${NC}"
     fi
-    echo -e "${GREEN}✓ Nexus Implementation updated successfully${NC}"
-else
-    echo -e "${GREEN}🆕 Creating Nexus Implementation (${BRANCH} branch)${NC}"
-    echo -e "${GREEN}──────────────────────────────${NC}"
-    cd ~/nexus
-    if [ -n "$GIT_TOKEN" ]; then
-        git -c credential.helper= -c credential.helper='!f() { echo "username=git"; echo "password=$GIT_TOKEN"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
-    else
-        echo -e -n "${YELLOW}🔐 GitHub Password for Nexus Implementation: ${NC}"
-        read -s GIT_PASSWORD
-        echo ""
-        git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' clone -b $BRANCH https://github.com/sil-repo/Nexus-implementation.git nexus-implementation
-        unset GIT_PASSWORD
-    fi
-    echo -e "${GREEN}✓ Nexus Implementation created successfully${NC}"
-fi
-echo ""
+    echo ""
+}
+
+handle_repository "Nexus Core" ~/nexus/nexus-app https://github.com/sil-repo/Nexus.git "$NEXUS_CORE_BRANCH"
+handle_repository "Nexus Custom" ~/nexus/nexus-custom https://github.com/sil-repo/Nexus-PAS.git "$NEXUS_CUSTOM_BRANCH"
+handle_repository "Nexus Implementation" ~/nexus/nexus-implementation https://github.com/sil-repo/Nexus-implementation.git "$NEXUS_IMPLEMENTATION_BRANCH"
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}🔧 Update complete. Deploying with docker-compose-prod.yml...${NC}"
+echo -e "${WHITE}🔧 Update complete. Deploying with ${DOCKER_COMPOSE_FILE}...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
-
-# Add or update logging options and ensure working_dir/command for nexus in docker-compose override file
-# Use the correct compose file extension (.yaml)
-docker_compose_base="/home/source/nexus/docker-compose-prod.yaml"
-docker_compose_override="/home/source/nexus/docker-compose-prod.override.yaml"
-cat > "$docker_compose_override" <<EOL
-version: '3.8'
-services:
-  nexus:
-    logging:
-      driver: json-file
-      options:
-        max-size: "100m"
-        max-file: "5"
-        compress: "true"
-    working_dir: /var/node
-    command: ["bash", "/var/node/start-live.sh"]
-  smtp:
-    logging:
-      driver: json-file
-      options:
-        max-size: "100m"
-        max-file: "5"
-        compress: "true"
-EOL
 
 cd /home/source/nexus
 
-docker compose -f "$docker_compose_base" -f "$docker_compose_override" up -d --remove-orphans
+if [ "$DOCKER_COMPOSE_FILE" = "docker-compose-hermm.yaml" ]; then
+    echo -e "${YELLOW}Creating custom docker-compose file...${NC}"
+    cp docker-compose-prod.yaml "$DOCKER_COMPOSE_FILE"
+    # You may want to add logic here to modify the custom docker-compose file based on the selected branches
+fi
+
+docker compose -f "$DOCKER_COMPOSE_FILE" up -d --remove-orphans
 
 echo ""
 echo -e "${BLUE}📊 Container status:${NC}"
-docker compose -f "$docker_compose_base" -f "$docker_compose_override" ps
+docker compose -f "$DOCKER_COMPOSE_FILE" ps
 
 echo ""
 echo -e "${BLUE}📜 Recent logs for nexus (last 20 lines):${NC}"
-docker compose -f "$docker_compose_base" -f "$docker_compose_override" logs --tail=20 nexus
+docker compose -f "$DOCKER_COMPOSE_FILE" logs --tail=20 nexus
 
 echo ""
-echo -e "${BLUE}💡 Logging is enabled with rotation (100MB × 5 files, compressed) for all services.${NC}"
 echo -e "${YELLOW}** Check uptime and logs as needed. **${NC}"
 echo ""
+echo -e "${GREEN}✅ Installation/update complete using ${DOCKER_COMPOSE_FILE}${NC}"
