@@ -14,7 +14,7 @@ NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.8 SCRIPT${PURPLE}║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.9 SCRIPT${PURPLE}║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
