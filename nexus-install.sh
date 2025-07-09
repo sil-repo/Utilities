@@ -18,20 +18,20 @@ echo -e "${PURPLE}╚═══════════════════�
 echo ""
 
 # Load the Git token
-# If token cannot be found, we'll use GitHub Device Flow for authentication
-#    - This will provide a browser link for secure authentication
+# If token cannot be found, we'll use GitHub Device Flow for authorisation
+#    - This will provide a browser link for secure authorisation
 #    - Alternative: Create a PAT token file: `echo "PATCodeInHere" > /git_token`
 #    - Secure the file: `chmod 600 /git_token`.
 if [ -f /git_token ]; then
     export GIT_TOKEN=$(cat /git_token)
     echo -e "${GREEN}✓ Using GitHub token from /git_token${NC}"
 else
-    echo -e "${YELLOW}⚠ No /git_token file found. Starting GitHub Device Flow authentication...${NC}"
-    echo -e "${CYAN}🔗 This will provide a browser link for secure authentication.${NC}"
+    echo -e "${YELLOW}⚠ No /git_token file found. Starting GitHub Device Flow authorisation...${NC}"
+    echo -e "${CYAN}🔗 This will provide a browser link for secure authorisation.${NC}"
     echo ""
     
     # Start GitHub Device Flow
-    echo -e "${BLUE}📱 Requesting device authentication from GitHub...${NC}"
+    echo -e "${BLUE}📱 Requesting device authorisation from GitHub...${NC}"
     
     # Use a public client ID for GitHub CLI (safe to use)
     CLIENT_ID="178c6fc778ccc68e1d6a"
@@ -64,10 +64,10 @@ else
         INTERVAL=${INTERVAL:-5}
         
         if [ -n "$USER_CODE" ] && [ -n "$VERIFICATION_URI" ] && [ -n "$DEVICE_CODE" ]; then
-            echo -e "${GREEN}✅ Device authentication initiated successfully!${NC}"
+            echo -e "${GREEN}✅ Device authorisation initiated successfully!${NC}"
             echo ""
             echo -e "${WHITE}╔══════════════════════════════════════════════════════════════╗${NC}"
-            echo -e "${WHITE}║                    ${YELLOW}GITHUB AUTHENTICATION${WHITE}                    ║${NC}"
+            echo -e "${WHITE}║                    ${YELLOW}GITHUB AUTHORISATION${WHITE}                    ║${NC}"
             echo -e "${WHITE}╠══════════════════════════════════════════════════════════════╣${NC}"
             echo -e "${WHITE}║                                                              ║${NC}"
             echo -e "${WHITE}║  ${YELLOW}🌐 Please open this URL in your browser:${WHITE}                ║${NC}"
@@ -76,15 +76,15 @@ else
             echo -e "${WHITE}║  ${YELLOW}🔑 Enter this code when prompted:${WHITE}                      ║${NC}"
             echo -e "${WHITE}║     ${GREEN}${USER_CODE}${WHITE}$(printf "%*s" $((52 - ${#USER_CODE})) "")║${NC}"
             echo -e "${WHITE}║                                                              ║${NC}"
-            echo -e "${WHITE}║  ${BLUE}💡 Copy the URL and code above to authenticate${WHITE}          ║${NC}"
+            echo -e "${WHITE}║  ${BLUE}💡 Copy the URL and code above to authorise${WHITE}            ║${NC}"
             echo -e "${WHITE}║     in your browser, then return here.${WHITE}                  ║${NC}"
             echo -e "${WHITE}║                                                              ║${NC}"
             echo -e "${WHITE}╚══════════════════════════════════════════════════════════════╝${NC}"
             echo ""
-            echo -e "${BLUE}⏳ Waiting for authentication... (Press Ctrl+C to cancel)${NC}"
+            echo -e "${BLUE}⏳ Waiting for authorisation... (Press Ctrl+C to cancel)${NC}"
             echo ""
             
-            # Poll for authentication
+            # Poll for authorisation
             MAX_ATTEMPTS=120  # 10 minutes at 5-second intervals
             ATTEMPT=0
             
@@ -105,7 +105,7 @@ else
                     
                     if [ -n "$GIT_TOKEN" ]; then
                         export GIT_TOKEN
-                        echo -e "${GREEN}✅ Authentication successful! Token acquired.${NC}"
+                        echo -e "${GREEN}✅ Authorisation successful! Token acquired.${NC}"
                         echo -e "${BLUE}💾 Saving token to /git_token for future use...${NC}"
                         echo "$GIT_TOKEN" > /git_token
                         chmod 600 /git_token
@@ -121,24 +121,24 @@ else
                     echo -e "${RED}❌ Device code expired. Please restart the script.${NC}"
                     exit 1
                 elif echo "$TOKEN_RESPONSE" | grep -q "access_denied"; then
-                    echo -e "${RED}❌ Authentication denied. Please restart the script.${NC}"
+                    echo -e "${RED}❌ Authorisation denied. Please restart the script.${NC}"
                     exit 1
                 else
-                    echo -e "${YELLOW}⚠ Waiting for authentication... (response: $(echo "$TOKEN_RESPONSE" | head -c 50)...)${NC}"
+                    echo -e "${YELLOW}⚠ Waiting for authorisation... (response: $(echo "$TOKEN_RESPONSE" | head -c 50)...)${NC}"
                 fi
                 
                 ATTEMPT=$((ATTEMPT + 1))
             done
             
             if [ -z "$GIT_TOKEN" ]; then
-                echo -e "${RED}❌ Authentication timeout after 10 minutes.${NC}"
+                echo -e "${RED}❌ Authorisation timeout after 10 minutes.${NC}"
                 echo -e "${YELLOW}💡 You can also create a Personal Access Token manually:${NC}"
                 echo -e "${CYAN}   1. Go to: https://github.com/settings/tokens${NC}"
                 echo -e "${CYAN}   2. Generate a new token with 'repo' scope${NC}"
                 echo -e "${CYAN}   3. Save it to: echo 'YOUR_TOKEN' > /git_token${NC}"
                 echo -e "${CYAN}   4. Secure it: chmod 600 /git_token${NC}"
                 echo ""
-                echo -e "${YELLOW}Falling back to username/password authentication...${NC}"
+                echo -e "${YELLOW}Falling back to username/password authorisation...${NC}"
                 echo -e -n "${CYAN}GitHub Username: ${NC}"
                 read GIT_USERNAME
             fi
@@ -149,13 +149,13 @@ else
             echo -e "  User code: '${USER_CODE}'"
             echo -e "  Verification URI: '${VERIFICATION_URI}'"
             echo ""
-            echo -e "${YELLOW}Falling back to username/password authentication...${NC}"
+            echo -e "${YELLOW}Falling back to username/password authorisation...${NC}"
             echo -e -n "${CYAN}GitHub Username: ${NC}"
             read GIT_USERNAME
         fi
     else
         echo -e "${RED}❌ Failed to connect to GitHub.${NC}"
-        echo -e "${YELLOW}Falling back to username/password authentication...${NC}"
+        echo -e "${YELLOW}Falling back to username/password authorisation...${NC}"
         echo -e -n "${CYAN}GitHub Username: ${NC}"
         read GIT_USERNAME
     fi
@@ -208,33 +208,77 @@ while [ -z "$BRANCH_CHOICE" ]; do
 done
 echo ""
 
-# Function to select branch for a repository
+# Function to fetch available branches from GitHub repository
+fetch_branches() {
+    local repo_url=$1
+    local branches=""
+    
+    if [ -n "$GIT_TOKEN" ]; then
+        # Extract owner and repository from URL
+        local repo_path=${repo_url#https://github.com/}
+        repo_path=${repo_path%.git}
+        
+        # Fetch branches using GitHub API
+        branches=$(curl -s -H "Authorisation: token $GIT_TOKEN" \
+            "https://api.github.com/repos/${repo_path}/branches" | \
+            grep -o '"name": "[^"]*' | cut -d'"' -f4)
+    else
+        # Fallback to git ls-remote if no token is available
+        branches=$(git ls-remote --heads "$repo_url" | sed 's/.*refs\/heads\///')
+    fi
+    
+    echo "$branches"
+}
+
+# Function to select branch for a repository from available options
 select_branch() {
     local repo_name=$1
+    local repo_url=$2
     local branch=""
+    
+    echo -e "${YELLOW}Fetching available branches for ${repo_name}...${NC}"
+    local branches=$(fetch_branches "$repo_url")
+    
+    if [ -z "$branches" ]; then
+        echo -e "${RED}❌ Unable to fetch branches. Using default options.${NC}"
+        branches="master test"
+    fi
+    
+    # Convert branches to array and add numbers
+    local branch_array=()
+    local i=1
+    while read -r b; do
+        branch_array+=("$i) $b")
+        ((i++))
+    done <<< "$branches"
+    
+    # Add "None" option to skip repository
+    branch_array+=("$i) None (skip this repository)")
+    
     while [ -z "$branch" ]; do
         echo -e "${YELLOW}Select branch for ${repo_name}:${NC}"
-        echo -e "1) master"
-        echo -e "2) test"
-        echo -e "3) None (pull from GitHub if possible)"
-        printf "${CYAN}Enter your choice (1, 2, or 3): ${NC}"
+        printf '%s\n' "${branch_array[@]}"
+        printf "${CYAN}Enter your choice (1-%d): ${NC}" "$i"
         read -r choice < /dev/tty
-        case "$choice" in
-            1) branch="master" ;;
-            2) branch="test" ;;
-            3) branch="none" ;;
-            *) echo -e "${RED}❌ Invalid choice. Please enter 1, 2, or 3.${NC}" ;;
-        esac
+        
+        if [ "$choice" -eq "$i" ] 2>/dev/null; then
+            branch="none"
+        elif [ "$choice" -ge 1 ] && [ "$choice" -lt "$i" ] 2>/dev/null; then
+            branch=$(echo "$branches" | sed -n "${choice}p")
+        else
+            echo -e "${RED}❌ Invalid choice. Please enter a number between 1 and $i.${NC}"
+        fi
     done
+    
     echo "$branch"
 }
 
 # If Advanced (Custom) option is selected, choose branch for each repository
 if [ "$BRANCH_CHOICE" = "3" ]; then
-    NEXUS_CORE_BRANCH=$(select_branch "Nexus Core")
-    NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom")
-    NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation")
-    DOCKER_COMPOSE_FILE="docker-compose-hmmm.yaml"
+    NEXUS_CORE_BRANCH=$(select_branch "Nexus Core" "https://github.com/sil-repo/Nexus.git")
+    NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom" "https://github.com/sil-repo/Nexus-PAS.git")
+    NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation" "https://github.com/sil-repo/Nexus-implementation.git")
+    DOCKER_COMPOSE_FILE="docker-compose-custom.yaml"
 else
     NEXUS_CORE_BRANCH=$BRANCH
     NEXUS_CUSTOM_BRANCH=$BRANCH
@@ -293,12 +337,12 @@ handle_repository "Nexus Custom" ~/nexus/nexus-custom https://github.com/sil-rep
 handle_repository "Nexus Implementation" ~/nexus/nexus-implementation https://github.com/sil-repo/Nexus-implementation.git "$NEXUS_IMPLEMENTATION_BRANCH"
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════${NC}"
-echo -e "${WHITE}🔧 Update complete. Deploying with ${DOCKER_COMPOSE_FILE}...${NC}"
+echo -e "${WHITE}🔧 Update complete. Deploying using ${DOCKER_COMPOSE_FILE}...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
 cd /home/source/nexus
 
-if [ "$DOCKER_COMPOSE_FILE" = "docker-compose-hermm.yaml" ]; then
+if [ "$DOCKER_COMPOSE_FILE" = "docker-compose-custom.yaml" ]; then
     echo -e "${YELLOW}Creating custom docker-compose file...${NC}"
     cp docker-compose-prod.yaml "$DOCKER_COMPOSE_FILE"
     # You may want to add logic here to modify the custom docker-compose file based on the selected branches
@@ -315,6 +359,6 @@ echo -e "${BLUE}📜 Recent logs for nexus (last 20 lines):${NC}"
 docker compose -f "$DOCKER_COMPOSE_FILE" logs --tail=20 nexus
 
 echo ""
-echo -e "${YELLOW}** Check uptime and logs as needed. **${NC}"
+echo -e "${YELLOW}** Please check uptime and logs as required. **${NC}"
 echo ""
-echo -e "${GREEN}✅ Installation/update complete using ${DOCKER_COMPOSE_FILE}${NC}"
+echo -e "${GREEN}✅ Installation/update completed using ${DOCKER_COMPOSE_FILE}${NC}"
