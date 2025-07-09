@@ -14,7 +14,7 @@ NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.7 SCRIPT${PURPLE}║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.8 SCRIPT${PURPLE}║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -166,6 +166,28 @@ echo -e "\n${BLUE}════════════════════�
 echo -e "${WHITE}🚀 Starting Nexus repositories setup...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
+# Check if we have a terminal available for interactive input
+if [ ! -t 0 ] && [ ! -r /dev/tty ]; then
+    echo -e "${RED}❌ Error: This script requires interactive input but no terminal is available.${NC}"
+    echo -e "${YELLOW}💡 Try running the script directly instead of piping:${NC}"
+    echo -e "${CYAN}   1. Download the script: wget -O nexus-install.sh [URL]${NC}"
+    echo -e "${CYAN}   2. Make it executable: chmod +x nexus-install.sh${NC}"
+    echo -e "${CYAN}   3. Run it: ./nexus-install.sh${NC}"
+    echo ""
+    echo -e "${YELLOW}Or provide the branch choice as an argument:${NC}"
+    echo -e "${CYAN}   curl [URL] | bash -s -- 1    # for master branch${NC}"
+    echo -e "${CYAN}   curl [URL] | bash -s -- 2    # for test branch${NC}"
+    echo -e "${CYAN}   curl [URL] | bash -s -- 3    # for advanced (not recommended via curl)${NC}"
+    exit 1
+fi
+
+# Check if branch choice was provided as argument
+if [ -n "$1" ]; then
+    BRANCH_CHOICE="$1"
+    echo -e "${BLUE}📝 Branch choice provided as argument: $BRANCH_CHOICE${NC}"
+    echo ""
+fi
+
 # Branch selection - forced input
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${PURPLE}║                    ${WHITE}BRANCH SELECTION${PURPLE}                            ║${NC}"
@@ -178,11 +200,38 @@ echo -e "${PURPLE}3) Advanced (Custom)${NC} - Select branch for each repository"
 echo ""
 
 # Loop until valid input is provided
-BRANCH_CHOICE=""
-while [ -z "$BRANCH_CHOICE" ]; do
-    printf "${CYAN}Enter your choice (1, 2, or 3): ${NC}"
-    read -r BRANCH_CHOICE
-    
+if [ -z "$BRANCH_CHOICE" ]; then
+    while [ -z "$BRANCH_CHOICE" ]; do
+        printf "${CYAN}Enter your choice (1, 2, or 3): ${NC}"
+        read -r BRANCH_CHOICE < /dev/tty
+        
+        case "$BRANCH_CHOICE" in
+            1)
+                BRANCH="master"
+                DOCKER_COMPOSE_FILE="docker-compose-prod.yaml"
+                echo -e "${GREEN}✓ Selected: Live Branch (master)${NC}"
+                ;;
+            2)
+                BRANCH="test"
+                DOCKER_COMPOSE_FILE="docker-compose-test.yaml"
+                echo -e "${BLUE}✓ Selected: Test Branch (test)${NC}"
+                ;;
+            3)
+                echo -e "${ORANGE}✓ Selected: Advanced (Custom)${NC}"
+                # Custom branch selection will happen after this case statement
+                ;;
+            "")
+                echo -e "${RED}❌ No input provided. Please enter 1, 2, or 3.${NC}"
+                BRANCH_CHOICE=""
+                ;;
+            *)
+                echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Please enter 1, 2, or 3.${NC}"
+                BRANCH_CHOICE=""
+                ;;
+        esac
+    done
+else
+    # Process the argument-provided choice
     case "$BRANCH_CHOICE" in
         1)
             BRANCH="master"
@@ -198,16 +247,12 @@ while [ -z "$BRANCH_CHOICE" ]; do
             echo -e "${ORANGE}✓ Selected: Advanced (Custom)${NC}"
             # Custom branch selection will happen after this case statement
             ;;
-        "")
-            echo -e "${RED}❌ No input provided. Please enter 1, 2, or 3.${NC}"
-            BRANCH_CHOICE=""
-            ;;
         *)
-            echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Please enter 1, 2, or 3.${NC}"
-            BRANCH_CHOICE=""
+            echo -e "${RED}❌ Invalid choice '${BRANCH_CHOICE}'. Valid options are 1, 2, or 3.${NC}"
+            exit 1
             ;;
     esac
-done
+fi
 echo ""
 
 # Function to select branch for a repository
@@ -227,7 +272,7 @@ select_branch() {
         echo -e "${RED}4) Skip this repository${NC}"
         echo ""
         printf "${CYAN}Enter your choice (1-4): ${NC}"
-        read -r choice
+        read -r choice < /dev/tty
         
         case "$choice" in
             1)
