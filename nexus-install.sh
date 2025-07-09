@@ -181,7 +181,7 @@ echo ""
 BRANCH_CHOICE=""
 while [ -z "$BRANCH_CHOICE" ]; do
     printf "${CYAN}Enter your choice (1, 2, or 3): ${NC}"
-    read -r BRANCH_CHOICE < /dev/tty
+    read -r BRANCH_CHOICE
     
     case "$BRANCH_CHOICE" in
         1)
@@ -227,7 +227,7 @@ select_branch() {
         echo -e "${RED}4) Skip this repository${NC}"
         echo ""
         printf "${CYAN}Enter your choice (1-4): ${NC}"
-        read -r choice < /dev/tty
+        read -r choice
         
         case "$choice" in
             1)
@@ -258,6 +258,8 @@ select_branch() {
 # If Advanced (Custom) option is selected, choose branch for each repository
 if [ "$BRANCH_CHOICE" = "3" ]; then
     echo -e "${PURPLE}✓ Selected: Advanced (Custom Branch Selection)${NC}"
+    echo ""
+    echo -e "${BLUE}📝 Now selecting branches for each repository...${NC}"
     echo ""
     NEXUS_CORE_BRANCH=$(select_branch "Nexus Core")
     NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom")
@@ -324,7 +326,7 @@ echo -e "\n${BLUE}════════════════════�
 echo -e "${WHITE}🔧 Update complete. Deploying using ${DOCKER_COMPOSE_FILE}...${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}\n"
 
-cd /home/source/nexus
+cd ~/nexus
 
 if [ "$DOCKER_COMPOSE_FILE" = "docker-compose-custom.yaml" ]; then
     echo -e "${YELLOW}Creating custom docker-compose file...${NC}"
