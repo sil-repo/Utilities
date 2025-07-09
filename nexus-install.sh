@@ -13,7 +13,7 @@ NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE 1.3 SCRIPT${PURPLE}                    ║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE 1.4 SCRIPT${PURPLE}                    ║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -276,13 +276,18 @@ select_branch() {
         printf "${CYAN}Enter your choice (1-%d): ${NC}" "$i"
         read -r choice < /dev/tty
         
-        if [ "$choice" -eq "$i" ] 2>/dev/null; then
+        # Check if input is a non-empty integer
+    if [[ "$choice" =~ ^[0-9]+$ ]]; then
+        if [ "$choice" -eq "$i" ]; then
             branch="none"
-        elif [ "$choice" -ge 1 ] && [ "$choice" -lt "$i" ] 2>/dev/null; then
+        elif [ "$choice" -ge 1 ] && [ "$choice" -lt "$i" ]; then
             branch=$(echo "$branches" | sed -n "${choice}p")
         else
             echo -e "${RED}❌ Invalid choice. Please enter a number between 1 and $i.${NC}"
         fi
+    else
+        echo -e "${RED}❌ Invalid input. Please enter a number between 1 and $i.${NC}"
+    fi
     done
     
     echo "$branch"
@@ -290,10 +295,12 @@ select_branch() {
 
 # If Advanced (Custom) option is selected, choose branch for each repository
 if [ "$BRANCH_CHOICE" = "3" ]; then
-    echo "${RED}🔧 Debug - Choice 3 Selected ${NC}"
+    echo -e "${PURPLE}✓ Advanced mode - Select branch for each repository${NC}"
+    echo ""
     NEXUS_CORE_BRANCH=$(select_branch "Nexus Core" "https://github.com/sil-repo/Nexus.git")
-    echo "${RED}🔧 Debug - Core Branch Select ${NC}"
+    echo ""
     NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom" "https://github.com/sil-repo/Nexus-PAS.git")
+    echo ""
     NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation" "https://github.com/sil-repo/Nexus-implementation.git")
     DOCKER_COMPOSE_FILE="docker-compose-custom.yaml"
 else

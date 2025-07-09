@@ -9,6 +9,12 @@ An automated script for installing and updating Nexus repositories with branch s
 ### Direct Download & Run
 ```bash
 curl -sL https://raw.githubusercontent.com/sil-repo/Utilities/master/nexus-install.sh | bash
+
+```
+**Curl without Caching**
+```
+curl -sL -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' https://raw.githubusercontent.com/sil-repo/Utilities/master/nexus-install.sh | bash
+
 ```
 
 The script will:
