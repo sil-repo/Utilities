@@ -168,7 +168,7 @@ echo -e "${BLUE}═════════════════════�
 
 # Check if we have a terminal available for interactive input
 if [ ! -t 0 ] && [ ! -r /dev/tty ]; then
-    echo -e "${RED}❌ Error: This script requires interactive input but no terminal is available.${NC}"
+    echo -e "${RED}❌ Error: This script requires interactive input but no terminal is available (due to API calls to github).${NC}"
     echo -e "${YELLOW}💡 Try running the script directly instead of piping:${NC}"
     echo -e "${CYAN}   1. Download the script: wget -O nexus-install.sh [URL]${NC}"
     echo -e "${CYAN}   2. Make it executable: chmod +x nexus-install.sh${NC}"
