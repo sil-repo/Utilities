@@ -13,7 +13,7 @@ NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE 1.4 SCRIPT${PURPLE}                    ║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.1 SCRIPT${PURPLE}                    ║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -208,100 +208,57 @@ while [ -z "$BRANCH_CHOICE" ]; do
 done
 echo ""
 
-# Function to fetch available branches from GitHub repository
-fetch_branches() {
-    local repo_url=$1
-    local branches=""
-    
-    if [ -n "$GIT_TOKEN" ]; then
-        # Extract owner and repository from URL
-        local repo_path=${repo_url#https://github.com/}
-        repo_path=${repo_path%.git}
-        
-        # Fetch branches using GitHub API
-        branches=$(curl -s -H "Authorization: token $GIT_TOKEN" \
-            "https://api.github.com/repos/${repo_path}/branches" | \
-            grep -o '"name": "[^"]*' | cut -d'"' -f4)
-    else
-        # Fallback to git ls-remote if no token is available
-        if [ -n "$GIT_USERNAME" ]; then
-            echo -e -n "${YELLOW}🔐 GitHub Password for branch listing: ${NC}"
-            read -s GIT_PASSWORD
-            echo ""
-            branches=$(git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' ls-remote --heads "$repo_url" 2>/dev/null | sed 's/.*refs\/heads\///')
-            unset GIT_PASSWORD
-        else
-            branches=$(git ls-remote --heads "$repo_url" 2>/dev/null | sed 's/.*refs\/heads\///')
-        fi
-    fi
-    
-    echo "$branches"
-}
-
-# Function to select branch for a repository from available options
+# Function to select branch for a repository
 select_branch() {
     local repo_name=$1
-    local repo_url=$2
     local branch=""
     
-    echo -e "${YELLOW}Fetching available branches for ${repo_name}...${NC}"
-    local branches=$(fetch_branches "$repo_url")
-    
-    if [ -z "$branches" ]; then
-        echo -e "${RED}❌ Unable to fetch branches from GitHub.${NC}"
-        echo -e "${YELLOW}This might be because:${NC}"
-        echo -e "${YELLOW}  - The repository is private and requires authentication${NC}"
-        echo -e "${YELLOW}  - The token doesn't have 'repo' scope${NC}"
-        echo -e "${YELLOW}  - Network connectivity issues${NC}"
-        echo -e "${CYAN}Using default branch options: master, test${NC}"
-        branches=$'master\ntest'
-    else
-        echo -e "${GREEN}✓ Found $(echo "$branches" | wc -l) branches${NC}"
-    fi
-    
-    # Convert branches to array and add numbers
-    local branch_array=()
-    local i=1
-    while read -r b; do
-        branch_array+=("$i) $b")
-        ((i++))
-    done <<< "$branches"
-    
-    # Add "None" option to skip repository
-    branch_array+=("$i) None (skip this repository)")
-    
     while [ -z "$branch" ]; do
-        echo -e "${YELLOW}Select branch for ${repo_name}:${NC}"
-        printf '%s\n' "${branch_array[@]}"
-        printf "${CYAN}Enter your choice (1-%d): ${NC}" "$i"
+        echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${PURPLE}║                    ${WHITE}SELECT BRANCH: ${repo_name}${PURPLE}                    ║${NC}"
+        echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${GREEN}1) Live Branch (master)${NC} - Stable production version"
+        echo -e "${BLUE}2) Development Branch (dev)${NC} - Development version"
+        echo -e "${YELLOW}3) Test Branch (test)${NC} - Testing version"
+        echo -e "${RED}4) Skip this repository${NC}"
+        echo ""
+        printf "${CYAN}Enter your choice (1-4): ${NC}"
         read -r choice < /dev/tty
         
-        # Check if input is a non-empty integer
-    if [[ "$choice" =~ ^[0-9]+$ ]]; then
-        if [ "$choice" -eq "$i" ]; then
-            branch="none"
-        elif [ "$choice" -ge 1 ] && [ "$choice" -lt "$i" ]; then
-            branch=$(echo "$branches" | sed -n "${choice}p")
-        else
-            echo -e "${RED}❌ Invalid choice. Please enter a number between 1 and $i.${NC}"
-        fi
-    else
-        echo -e "${RED}❌ Invalid input. Please enter a number between 1 and $i.${NC}"
-    fi
+        case "$choice" in
+            1)
+                branch="master"
+                echo -e "${GREEN}✓ Selected: Live Branch (master)${NC}"
+                ;;
+            2)
+                branch="dev"
+                echo -e "${BLUE}✓ Selected: Development Branch (dev)${NC}"
+                ;;
+            3)
+                branch="test"
+                echo -e "${YELLOW}✓ Selected: Test Branch (test)${NC}"
+                ;;
+            4)
+                branch="none"
+                echo -e "${RED}✓ Skipping this repository${NC}"
+                ;;
+            *)
+                echo -e "${RED}❌ Invalid choice. Please enter a number between 1 and 4.${NC}"
+                ;;
+        esac
     done
-    
+    echo ""
     echo "$branch"
 }
 
 # If Advanced (Custom) option is selected, choose branch for each repository
 if [ "$BRANCH_CHOICE" = "3" ]; then
-    echo -e "${PURPLE}✓ Advanced mode - Select branch for each repository${NC}"
+    echo -e "${PURPLE}✓ Selected: Advanced (Custom Branch Selection)${NC}"
     echo ""
-    NEXUS_CORE_BRANCH=$(select_branch "Nexus Core" "https://github.com/sil-repo/Nexus.git")
-    echo ""
-    NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom" "https://github.com/sil-repo/Nexus-PAS.git")
-    echo ""
-    NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation" "https://github.com/sil-repo/Nexus-implementation.git")
+    NEXUS_CORE_BRANCH=$(select_branch "Nexus Core")
+    NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom")
+    NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation")
     DOCKER_COMPOSE_FILE="docker-compose-custom.yaml"
 else
     NEXUS_CORE_BRANCH=$BRANCH
