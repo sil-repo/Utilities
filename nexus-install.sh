@@ -9,11 +9,12 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
+ORANGE='\033[0;33m'
 NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.1 SCRIPT${PURPLE}                    ║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.2 SCRIPT${PURPLE}║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -195,6 +196,7 @@ while [ -z "$BRANCH_CHOICE" ]; do
             ;;
         3)
             echo -e "${ORANGE}✓ Selected: Advanced (Custom)${NC}"
+            # Custom branch selection will happen after this case statement
             ;;
         "")
             echo -e "${RED}❌ No input provided. Please enter 1, 2, or 3.${NC}"
@@ -214,8 +216,13 @@ select_branch() {
     local branch=""
     
     while [ -z "$branch" ]; do
+        # Calculate padding for proper centering
+        title="SELECT BRANCH: ${repo_name}"
+        padding=$((30 - ${#title} / 2))
+        padding_str=$(printf '%*s' "$padding" '')
+        
         echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${PURPLE}║                    ${WHITE}SELECT BRANCH: ${repo_name}${PURPLE}                    ║${NC}"
+        echo -e "${PURPLE}║${padding_str}${WHITE}${title}${PURPLE}$(printf '%*s' $((60 - ${#title} - padding)) '')║${NC}"
         echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
         echo ""
         echo -e "${GREEN}1) Live Branch (master)${NC} - Stable production version"
