@@ -167,7 +167,7 @@ echo -e "${BLUE}═════════════════════�
 
 # Branch selection - forced input
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}BRANCH SELECTION${PURPLE}                         ║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}BRANCH SELECTION${PURPLE}                            ║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${YELLOW}Please select which branch to install/update:${NC}"
