@@ -219,12 +219,20 @@ fetch_branches() {
         repo_path=${repo_path%.git}
         
         # Fetch branches using GitHub API
-        branches=$(curl -s -H "Authorisation: token $GIT_TOKEN" \
+        branches=$(curl -s -H "Authorization: token $GIT_TOKEN" \
             "https://api.github.com/repos/${repo_path}/branches" | \
             grep -o '"name": "[^"]*' | cut -d'"' -f4)
     else
         # Fallback to git ls-remote if no token is available
-        branches=$(git ls-remote --heads "$repo_url" | sed 's/.*refs\/heads\///')
+        if [ -n "$GIT_USERNAME" ]; then
+            echo -e -n "${YELLOW}🔐 GitHub Password for branch listing: ${NC}"
+            read -s GIT_PASSWORD
+            echo ""
+            branches=$(git -c credential.helper= -c credential.helper='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_PASSWORD"; } ; f' ls-remote --heads "$repo_url" 2>/dev/null | sed 's/.*refs\/heads\///')
+            unset GIT_PASSWORD
+        else
+            branches=$(git ls-remote --heads "$repo_url" 2>/dev/null | sed 's/.*refs\/heads\///')
+        fi
     fi
     
     echo "$branches"
@@ -240,8 +248,15 @@ select_branch() {
     local branches=$(fetch_branches "$repo_url")
     
     if [ -z "$branches" ]; then
-        echo -e "${RED}❌ Unable to fetch branches. Using default options.${NC}"
-        branches="master test"
+        echo -e "${RED}❌ Unable to fetch branches from GitHub.${NC}"
+        echo -e "${YELLOW}This might be because:${NC}"
+        echo -e "${YELLOW}  - The repository is private and requires authentication${NC}"
+        echo -e "${YELLOW}  - The token doesn't have 'repo' scope${NC}"
+        echo -e "${YELLOW}  - Network connectivity issues${NC}"
+        echo -e "${CYAN}Using default branch options: master, test${NC}"
+        branches=$'master\ntest'
+    else
+        echo -e "${GREEN}✓ Found $(echo "$branches" | wc -l) branches${NC}"
     fi
     
     # Convert branches to array and add numbers
@@ -275,7 +290,9 @@ select_branch() {
 
 # If Advanced (Custom) option is selected, choose branch for each repository
 if [ "$BRANCH_CHOICE" = "3" ]; then
+    echo "${RED}🔧 Debug - Choice 3 Selected ${NC}"
     NEXUS_CORE_BRANCH=$(select_branch "Nexus Core" "https://github.com/sil-repo/Nexus.git")
+    echo "${RED}🔧 Debug - Core Branch Select ${NC}"
     NEXUS_CUSTOM_BRANCH=$(select_branch "Nexus Custom" "https://github.com/sil-repo/Nexus-PAS.git")
     NEXUS_IMPLEMENTATION_BRANCH=$(select_branch "Nexus Implementation" "https://github.com/sil-repo/Nexus-implementation.git")
     DOCKER_COMPOSE_FILE="docker-compose-custom.yaml"
