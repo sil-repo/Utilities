@@ -14,7 +14,7 @@ NC='\033[0m' # No Colour
 
 # Visual header
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.3 SCRIPT${PURPLE}║${NC}"
+echo -e "${PURPLE}║                    ${WHITE}NEXUS INSTALL/UPDATE v1.6.5 SCRIPT${PURPLE}║${NC}"
 echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -216,13 +216,9 @@ select_branch() {
     local branch=""
     
     while [ -z "$branch" ]; do
-        # Calculate padding for proper centering
-        title="SELECT BRANCH: ${repo_name}"
-        padding=$((30 - ${#title} / 2))
-        padding_str=$(printf '%*s' "$padding" '')
-        
+        # Display header with repository name
         echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${PURPLE}║${padding_str}${WHITE}${title}${PURPLE}$(printf '%*s' $((60 - ${#title} - padding)) '')║${NC}"
+        echo -e "${PURPLE}║                ${WHITE}SELECT BRANCH: ${repo_name}${PURPLE}                ║${NC}"
         echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
         echo ""
         echo -e "${GREEN}1) Live Branch (master)${NC} - Stable production version"
